@@ -10,12 +10,13 @@
 
 class LRUCache {
   constructor(capacity) {
-    this.capacity = Number(capacity);
-    this.length = 0;
-    this.map = new Map(); // <Key> : <Node Address>
+    this.capacity = capacity;
     this.head = null;
-    this.tail = null; // LRU Node
+    this.tail = null;
+    this.map = new Map();
+    this.length = 0;
   }
+
   #removeNode(node) {
     if (!node) return;
 
@@ -32,64 +33,65 @@ class LRUCache {
       this.tail = node.prev;
     }
   }
-  get(key) {
-    // Your Code Here
-  }
-  put(key, value) {
-    // Check if we have capacity
-    if (this.length === this.capacity && !this.map.has(key)) {
-      this.#removeNode(this.tail);
+
+  #addNodeToHead(node) {
+    node.next = this.head;
+    node.prev = null;
+
+    if (this.head) {
+      this.head.prev = node;
     }
-
-    // Case: If key is already in cache store
-    if (this.map.has(key)) {
-      // Remove the existing/old Node
-      this.#removeNode(this.map.get(key));
-    }
-    // create a new Node
-    const node = {
-      next: this.head, // previous head for head node
-      prev: null,
-      key,
-      value
-    };
-
-    this.map.set(key, node);
-
-    // Add it To the Head
     this.head = node;
-    if (this.tail === null) {
+
+    if (!this.tail) {
       this.tail = node;
     }
+  }
 
+  get(key) {
+    if (!this.map.has(key)) return null;
+
+    const node = this.map.get(key);
+    this.#removeNode(node);
+    this.#addNodeToHead(node);
+
+    return node.value;
+  }
+
+  put(key, value) {
+    if (this.map.has(key)) {
+      const existingNode = this.map.get(key);
+      this.#removeNode(existingNode);
+      this.length -= 1;
+    } else if (this.length === this.capacity) {
+      this.map.delete(this.tail.key);
+      this.#removeNode(this.tail);
+      this.length -= 1;
+    }
+
+    const newNode = { key, value, prev: null, next: null };
+    this.#addNodeToHead(newNode);
+    this.map.set(key, newNode);
     this.length += 1;
   }
+
   debug() {
     let current = this.head;
     const arr = [];
-
     while (current != null) {
-      arr.push(current);
+      arr.push(`[${current.key}: ${current.value}]`);
       current = current.next;
     }
-    // console.log(this.map.get(1));
-    // console.log(this.map.get(2));
-    // console.log(this.map.get(3));
-    // console.log('_________');
-    // console.log('head', this.head);
-    // console.log('tail', this.tail);
-
-    return arr.reduce(
-      (acc, curr) =>
-        acc.concat(`-->[ [${curr.key}] : [${curr.value}] ]-->`),
-      ''
-    );
+    return arr.join(' <-> ');
   }
 }
 
+// Test the LRUCache
 const cache = new LRUCache(3);
 cache.put(1, 10);
 cache.put(2, 20);
+console.log(cache.get(1)); // Output: 10
 cache.put(3, 30);
-
-console.log(cache.debug());
+cache.put(4, 40); // Evicts key 2
+cache.put(1, 100);
+console.log(cache.debug()); // Output: [4: 40] <-> [3: 30] <-> [1: 10]
